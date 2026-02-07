@@ -1,0 +1,85 @@
+{
+    "features": [
+        {
+            "name": "Authentication",
+            "pattern": "auth|login|signup|register",
+            "riskLevel": "critical",
+            "businessImpact": "critical",
+            "technicalComplexity": "high",
+            "changeFrequency": "medium"
+        },
+        {
+            "name": "Payment Processing",
+            "pattern": "payment|checkout|billing|transaction",
+            "riskLevel": "critical",
+            "businessImpact": "critical",
+            "technicalComplexity": "high",
+            "changeFrequency": "low"
+        },
+        {
+            "name": "Shopping Cart",
+            "pattern": "cart|basket",
+            "riskLevel": "high",
+            "businessImpact": "high",
+            "technicalComplexity": "medium",
+            "changeFrequency": "medium"
+        },
+        {
+            "name": "Product Catalog",
+            "pattern": "product|catalog|inventory",
+            "riskLevel": "high",
+            "businessImpact": "high",
+            "technicalComplexity": "medium",
+            "changeFrequency": "high"
+        },
+        {
+            "name": "Order Management",
+            "pattern": "order|purchase",
+            "riskLevel": "high",
+            "businessImpact": "high",
+            "technicalComplexity": "high",
+            "changeFrequency": "medium"
+        },
+        {
+            "name": "User Profile",
+            "pattern": "profile|account|settings",
+            "riskLevel": "medium",
+            "businessImpact": "medium",
+            "technicalComplexity": "low",
+            "changeFrequency": "low"
+        },
+        {
+            "name": "Search",
+            "pattern": "search|filter",
+            "riskLevel": "medium",
+            "businessImpact": "medium",
+            "technicalComplexity": "medium",
+            "changeFrequency": "medium"
+        },
+        {
+            "name": "Admin Panel",
+            "pattern": "admin|dashboard",
+            "riskLevel": "high",
+            "businessImpact": "high",
+            "technicalComplexity": "high",
+            "changeFrequency": "medium"
+        },
+        {
+            "name": "UI Components",
+            "pattern": "button|modal|dropdown|navigation",
+            "riskLevel": "low",
+            "businessImpact": "low",
+            "technicalComplexity": "low",
+            "changeFrequency": "high"
+        },
+        {
+            "name": "Static Pages",
+            "pattern": "about|contact|faq|terms",
+            "riskLevel": "low",
+            "businessImpact": "low",
+            "technicalComplexity": "low",
+            "changeFrequency": "low"
+        }
+    ],
+    "defaultRiskLevel": "medium"
+}

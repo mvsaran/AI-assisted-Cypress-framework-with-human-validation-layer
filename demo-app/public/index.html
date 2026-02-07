@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Tested E-Commerce Demo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>🛒 AI Shop</h1>
+            </div>
+            <div class="nav-menu">
+                <a href="#" data-testid="nav-home" class="nav-link active">Home</a>
+                <a href="#" data-testid="nav-products" class="nav-link">Products</a>
+                <a href="#" data-testid="nav-cart" class="nav-link">
+                    Cart <span data-testid="cart-count" class="cart-badge">0</span>
+                </a>
+                <a href="#" data-testid="nav-login" class="nav-link" id="loginLink">Login</a>
+                <a href="#" data-testid="nav-profile" class="nav-link hidden" id="profileLink">Profile</a>
+                <a href="#" data-testid="nav-logout" class="nav-link hidden" id="logoutLink">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Login Page -->
+        <section id="loginPage" class="page">
+            <div class="auth-container">
+                <h2>Login</h2>
+                <form id="loginForm" data-testid="login-form">
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" data-testid="email-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" data-testid="password-input" required>
+                    </div>
+                    <button type="submit" data-testid="login-button" class="btn btn-primary">Login</button>
+                    <p class="auth-switch">
+                        Don't have an account? <a href="#" data-testid="show-register">Register</a>
+                    </p>
+                </form>
+                <div id="loginError" data-testid="login-error" class="error-message hidden"></div>
+            </div>
+        </section>
+
+        <!-- Register Page -->
+        <section id="registerPage" class="page hidden">
+            <div class="auth-container">
+                <h2>Register</h2>
+                <form id="registerForm" data-testid="register-form">
+                    <div class="form-group">
+                        <label for="registerName">Name</label>
+                        <input type="text" id="registerName" data-testid="name-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">Email</label>
+                        <input type="email" id="registerEmail" data-testid="register-email-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Password</label>
+                        <input type="password" id="registerPassword" data-testid="register-password-input" required>
+                    </div>
+                    <button type="submit" data-testid="register-button" class="btn btn-primary">Register</button>
+                    <p class="auth-switch">
+                        Already have an account? <a href="#" data-testid="show-login">Login</a>
+                    </p>
+                </form>
+                <div id="registerError" data-testid="register-error" class="error-message hidden"></div>
+            </div>
+        </section>
+
+        <!-- Products Page -->
+        <section id="productsPage" class="page hidden">
+            <h2>Products</h2>
+            <div class="filters">
+                <input type="text" id="searchInput" data-testid="search-input" placeholder="Search products...">
+                <select id="categoryFilter" data-testid="category-filter">
+                    <option value="">All Categories</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Accessories">Accessories</option>
+                </select>
+            </div>
+            <div id="productGrid" data-testid="product-grid" class="product-grid"></div>
+        </section>
+
+        <!-- Cart Page -->
+        <section id="cartPage" class="page hidden">
+            <h2>Shopping Cart</h2>
+            <div id="cartItems" data-testid="cart-items" class="cart-items"></div>
+            <div class="cart-summary">
+                <h3>Total: $<span id="cartTotal" data-testid="cart-total">0.00</span></h3>
+                <button id="checkoutBtn" data-testid="checkout-button" class="btn btn-primary">Proceed to Checkout</button>
+            </div>
+        </section>
+
+        <!-- Checkout Page -->
+        <section id="checkoutPage" class="page hidden">
+            <h2>Checkout</h2>
+            <form id="checkoutForm" data-testid="checkout-form">
+                <div class="form-group">
+                    <label for="paymentMethod">Payment Method</label>
+                    <select id="paymentMethod" data-testid="payment-method" required>
+                        <option value="">Select payment method</option>
+                        <option value="credit-card">Credit Card</option>
+                        <option value="debit-card">Debit Card</option>
+                        <option value="paypal">PayPal</option>
+                    </select>
+                </div>
+                <div id="orderSummary" data-testid="order-summary" class="order-summary"></div>
+                <button type="submit" data-testid="place-order-button" class="btn btn-primary">Place Order</button>
+            </form>
+        </section>
+
+        <!-- Profile Page -->
+        <section id="profilePage" class="page hidden">
+            <h2>My Profile</h2>
+            <div id="profileInfo" data-testid="profile-info"></div>
+            <h3>My Orders</h3>
+            <div id="orderHistory" data-testid="order-history" class="order-history"></div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
