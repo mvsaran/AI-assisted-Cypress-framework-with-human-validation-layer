@@ -9,13 +9,13 @@
     "lint": "eslint src/**/*.ts cypress/**/*.ts --fix",
     "format": "prettier --write \"src/**/*.ts\" \"cypress/**/*.ts\"",
     "demo:start": "node demo-app/server.js",
-    "ai:generate": "ts-node src/cli/generate-tests.ts",
-    "validate:tests": "ts-node src/cli/validate-tests.ts",
-    "confidence:calculate": "ts-node src/cli/calculate-confidence.ts",
-    "gates:validate": "ts-node src/cli/validate-gates.ts",
-    "report:rejection": "ts-node src/cli/rejection-report.ts",
-    "report:coverage": "ts-node src/cli/coverage-report.ts",
-    "report:dashboard": "ts-node src/cli/generate-dashboard.ts"
+    "ai:generate": "node --env-file=.env -r ts-node/register src/cli/generate-tests.ts",
+    "validate:tests": "node --env-file=.env -r ts-node/register src/cli/validate-tests.ts",
+    "confidence:calculate": "node --env-file=.env -r ts-node/register src/cli/calculate-confidence.ts",
+    "gates:validate": "node --env-file=.env -r ts-node/register src/cli/validate-gates.ts",
+    "report:rejection": "node --env-file=.env -r ts-node/register src/cli/rejection-report.ts",
+    "report:coverage": "node --env-file=.env -r ts-node/register src/cli/coverage-report.ts",
+    "report:dashboard": "node --env-file=.env -r ts-node/register src/cli/generate-dashboard.ts"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.73.0",
     "@types/node": "^25.2.1",
+    "@types/open": "^6.1.0",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "cypress": "^15.10.0",
@@ -33,8 +34,11 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "open": "^11.0.0",
+    "openai": "^6.25.0"
   }
 }

@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -9,6 +11,15 @@ export interface TestGenerationRequest {
     riskLevel: 'critical' | 'high' | 'medium' | 'low';
     existingSelectors?: string[];
     apiEndpoints?: string[];
+    /** Real HTML snippet of the page — used to ground Claude in real selectors */
+    pageHtml?: string;
+    /** Test credentials to use in generated tests */
+    credentials?: {
+        user: { email: string; password: string };
+        admin?: { email: string; password: string };
+    };
+    /** Base URL of the running application */
+    baseUrl?: string;
 }
 
 export interface GeneratedTest {
@@ -20,7 +31,11 @@ export interface GeneratedTest {
     generatedAt: Date;
 }
 
-export class AITestGenerator {
+interface AIProvider {
+    generate(prompt: string): Promise<string>;
+}
+
+class ClaudeProvider implements AIProvider {
     private client: Anthropic;
     private model: string;
     private maxTokens: number;
@@ -29,38 +44,121 @@ export class AITestGenerator {
     constructor() {
         const apiKey = process.env.ANTHROPIC_API_KEY;
         if (!apiKey) {
-            throw new Error('ANTHROPIC_API_KEY environment variable is required');
+            throw new Error('ANTHROPIC_API_KEY environment variable is required for Claude');
         }
-
         this.client = new Anthropic({ apiKey });
         this.model = process.env.AI_MODEL || 'claude-3-5-sonnet-20241022';
         this.maxTokens = parseInt(process.env.AI_MAX_TOKENS || '4096');
         this.temperature = parseFloat(process.env.AI_TEMPERATURE || '0.7');
     }
 
+    async generate(prompt: string): Promise<string> {
+        const message = await this.client.messages.create({
+            model: this.model,
+            max_tokens: this.maxTokens,
+            temperature: this.temperature,
+            messages: [{ role: 'user', content: prompt }],
+        });
+
+        return message.content[0].type === 'text' ? message.content[0].text : '';
+    }
+}
+
+class GeminiProvider implements AIProvider {
+    private model: any;
+
+    constructor() {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            throw new Error('GEMINI_API_KEY environment variable is required for Gemini');
+        }
+        const genAI = new GoogleGenerativeAI(apiKey);
+        this.model = genAI.getGenerativeModel({
+            model: process.env.AI_MODEL || 'gemini-1.5-pro'
+        });
+    }
+
+    async generate(prompt: string): Promise<string> {
+        const result = await this.model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+    }
+}
+
+class OpenAIProvider implements AIProvider {
+    private client: OpenAI;
+    private model: string;
+    private maxTokens: number;
+    private temperature: number;
+
+    constructor() {
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey) {
+            throw new Error('OPENAI_API_KEY environment variable is required for OpenAI');
+        }
+        this.client = new OpenAI({ apiKey });
+        this.model = process.env.AI_MODEL || 'gpt-4o';
+        this.maxTokens = parseInt(process.env.AI_MAX_TOKENS || '4096');
+        this.temperature = parseFloat(process.env.AI_TEMPERATURE || '0.7');
+    }
+
+    async generate(prompt: string): Promise<string> {
+        const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: this.maxTokens,
+            temperature: this.temperature,
+        });
+
+        return response.choices[0]?.message?.content || '';
+    }
+}
+
+export class AITestGenerator {
+    private provider: AIProvider;
+
+    constructor() {
+        const providerType = (process.env.AI_PROVIDER || 'claude').toLowerCase();
+
+        if (providerType === 'gemini') {
+            this.provider = new GeminiProvider();
+        } else if (providerType === 'openai') {
+            this.provider = new OpenAIProvider();
+        } else {
+            this.provider = new ClaudeProvider();
+        }
+    }
+
+    /**
+     * Validate selectors against the DOM structure
+     */
+    private validateSelectors(selectors: string[]): string[] {
+        const validSelectors: string[] = [];
+        const domPath = path.resolve(__dirname, '../../demo-app/public/index.html');
+        const domContent = fs.readFileSync(domPath, 'utf-8');
+
+        selectors.forEach((selector) => {
+            if (domContent.includes(`data-testid="${selector}"`)) {
+                validSelectors.push(selector);
+            }
+        });
+
+        return validSelectors;
+    }
+
     /**
      * Generate a Cypress test using AI based on feature requirements
      */
     async generateTest(request: TestGenerationRequest): Promise<GeneratedTest> {
-        const prompt = this.buildPrompt(request);
+        // Validate selectors before generating the test
+        const validatedSelectors = request.existingSelectors
+            ? this.validateSelectors(request.existingSelectors)
+            : [];
+
+        const prompt = this.buildPrompt({ ...request, existingSelectors: validatedSelectors });
 
         try {
-            const message = await this.client.messages.create({
-                model: this.model,
-                max_tokens: this.maxTokens,
-                temperature: this.temperature,
-                messages: [
-                    {
-                        role: 'user',
-                        content: prompt,
-                    },
-                ],
-            });
-
-            const responseText = message.content[0].type === 'text'
-                ? message.content[0].text
-                : '';
-
+            const responseText = await this.provider.generate(prompt);
             const testCode = this.extractTestCode(responseText);
             const testName = this.extractTestName(testCode);
 
@@ -68,7 +166,7 @@ export class AITestGenerator {
                 testCode,
                 testName,
                 description: request.featureDescription,
-                qualityScore: 0, // Will be calculated by TestQualityScorer
+                qualityScore: 0,
                 riskAlignment: this.calculateRiskAlignment(request.riskLevel),
                 generatedAt: new Date(),
             };
@@ -77,90 +175,86 @@ export class AITestGenerator {
         }
     }
 
-    /**
-     * Build the prompt for AI test generation
-     */
     private buildPrompt(request: TestGenerationRequest): string {
         const riskGuidance = this.getRiskGuidance(request.riskLevel);
+        const baseUrl = request.baseUrl || 'http://localhost:3000';
+        const creds = request.credentials;
+        const userCred = creds?.user ? `email: ${creds.user.email} / password: ${creds.user.password}` : 'user@shop.com / user123';
+        const adminCred = creds?.admin ? `email: ${creds.admin.email} / password: ${creds.admin.password}` : 'admin@shop.com / admin123';
 
         return `You are an expert QA automation engineer specializing in Cypress testing.
 
-Generate a comprehensive Cypress test for the following feature:
+Generate a comprehensive, REAL Cypress E2E test for the following feature of a demo e-commerce SPA.
 
 **Feature Name**: ${request.featureName}
 **Description**: ${request.featureDescription}
 ${request.userStory ? `**User Story**: ${request.userStory}` : ''}
 **Risk Level**: ${request.riskLevel.toUpperCase()}
+**Base URL**: ${baseUrl}
 
 ${riskGuidance}
 
-${request.existingSelectors ? `**Available Selectors**: ${request.existingSelectors.join(', ')}` : ''}
-${request.apiEndpoints ? `**API Endpoints**: ${request.apiEndpoints.join(', ')}` : ''}
+${request.existingSelectors && request.existingSelectors.length > 0
+                ? `**Verified data-testid selectors available in this page**:\n${request.existingSelectors.map((s) => `  [data-testid="${s}"]`).join('\n')}`
+                : ''}
+
+${request.apiEndpoints && request.apiEndpoints.length > 0
+                ? `**Real API Endpoints**:\n${request.apiEndpoints.map((e) => `  ${e}`).join('\n')}`
+                : ''}
+
+${request.pageHtml
+                ? `**Actual HTML of this page section** (use ONLY the selectors present here):
+\`\`\`html
+${request.pageHtml.substring(0, 3000)}
+\`\`\``
+                : ''}
+
+**Test Credentials**:
+- User : ${userCred}
+- Admin: ${adminCred}
 
 **Requirements**:
 1. Use TypeScript syntax
-2. Use data-testid selectors (e.g., [data-testid="element-name"])
-3. Include proper assertions using Cypress best practices
-4. Add meaningful test descriptions
-5. Handle async operations properly
-6. Include edge cases and error scenarios
-7. Use custom commands if appropriate (cy.login, cy.addToCart)
-8. Add comments explaining complex logic
-9. Follow the Page Object Model pattern where applicable
-10. Ensure the test is maintainable and readable
+2. ONLY use data-testid selectors that exist in the verified selectors list above — do NOT invent new ones
+3. Use cy.intercept() to spy on API calls and cy.wait() on those aliases. **NOTE**: Search and category filtering are handled CLIENT-SIDE in this app; do NOT use cy.intercept or cy.wait for search/filter actions.
+4. Include at least one negative test case (e.g. wrong password, empty form)
+5. Use cy.request() for API-level setup/teardown (e.g. clearing cart, logging in via API)
+6. base URL is ${baseUrl} — use cy.visit('/') not cy.visit('${baseUrl}')
+7. For login, use the custom command cy.login(email, password) which is already defined
+8. Add meaningful describe and it descriptions
+9. Each it() block should be independent — use beforeEach for shared setup
+10. Add comments explaining WHY not just WHAT
 
 **Output Format**:
-Provide ONLY the TypeScript test code wrapped in a code block. Do not include explanations outside the code block.
+Provide ONLY the TypeScript test code wrapped in a single typescript code block. No explanations outside the block.
 
-Example structure:
 \`\`\`typescript
 describe('Feature Name', () => {
   beforeEach(() => {
     // Setup
   });
 
-  it('should do something', () => {
-    // Test implementation
+  it('should handle happy path', () => {
+    // ...
+  });
+
+  it('should handle error scenario', () => {
+    // ...
   });
 });
 \`\`\``;
     }
 
-    /**
-     * Get risk-specific guidance for test generation
-     */
     private getRiskGuidance(riskLevel: string): string {
         const guidance = {
-            critical: `**CRITICAL RISK**: This feature is mission-critical. The test MUST include:
-- Comprehensive positive and negative test cases
-- Boundary value testing
-- Error handling validation
-- Data integrity checks
-- Security considerations
-- Rollback/recovery scenarios`,
-
-            high: `**HIGH RISK**: This feature is important. The test should include:
-- Multiple test scenarios covering main workflows
-- Error handling
-- Data validation
-- Edge cases`,
-
-            medium: `**MEDIUM RISK**: This feature is standard. The test should include:
-- Happy path testing
-- Basic error handling
-- Common edge cases`,
-
-            low: `**LOW RISK**: This feature is low priority. The test should include:
-- Basic happy path testing
-- Simple validation`,
+            critical: `**CRITICAL RISK**: This feature is mission-critical...`,
+            high: `**HIGH RISK**: This feature is important...`,
+            medium: `**MEDIUM RISK**: This feature is standard...`,
+            low: `**LOW RISK**: This feature is low priority...`,
         };
-
         return guidance[riskLevel as keyof typeof guidance] || guidance.medium;
     }
 
-    /**
-     * Extract test code from AI response
-     */
     private extractTestCode(response: string): string {
         const codeBlockRegex = /```typescript\n([\s\S]*?)\n```/;
         const match = response.match(codeBlockRegex);
@@ -169,7 +263,6 @@ describe('Feature Name', () => {
             return match[1].trim();
         }
 
-        // Fallback: try to extract any code block
         const genericCodeBlock = /```\n([\s\S]*?)\n```/;
         const genericMatch = response.match(genericCodeBlock);
 
@@ -177,13 +270,9 @@ describe('Feature Name', () => {
             return genericMatch[1].trim();
         }
 
-        // If no code block found, return the entire response
         return response.trim();
     }
 
-    /**
-     * Extract test name from generated code
-     */
     private extractTestName(testCode: string): string {
         const describeMatch = testCode.match(/describe\(['"]([^'"]+)['"]/);
         if (describeMatch && describeMatch[1]) {
@@ -192,22 +281,11 @@ describe('Feature Name', () => {
         return 'Generated Test';
     }
 
-    /**
-     * Calculate risk alignment score
-     */
     private calculateRiskAlignment(riskLevel: string): number {
-        const scores = {
-            critical: 100,
-            high: 80,
-            medium: 60,
-            low: 40,
-        };
+        const scores = { critical: 100, high: 80, medium: 60, low: 40 };
         return scores[riskLevel as keyof typeof scores] || 50;
     }
 
-    /**
-     * Save generated test to file
-     */
     async saveTest(test: GeneratedTest, outputDir: string): Promise<string> {
         const fileName = this.sanitizeFileName(test.testName);
         const filePath = path.join(outputDir, `${fileName}.cy.ts`);
@@ -215,8 +293,6 @@ describe('Feature Name', () => {
         const fileContent = `// AI-Generated Test
 // Generated: ${test.generatedAt.toISOString()}
 // Description: ${test.description}
-// Quality Score: ${test.qualityScore}
-// Risk Alignment: ${test.riskAlignment}
 
 ${test.testCode}
 `;
@@ -227,9 +303,6 @@ ${test.testCode}
         return filePath;
     }
 
-    /**
-     * Sanitize file name
-     */
     private sanitizeFileName(name: string): string {
         return name
             .toLowerCase()

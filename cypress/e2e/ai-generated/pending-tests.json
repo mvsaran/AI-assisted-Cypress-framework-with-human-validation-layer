@@ -1,0 +1,82 @@
+[
+  {
+    "fileName": "ai-register-1772106305561.cy.ts",
+    "featureName": "Authentication - Registration",
+    "riskLevel": "high",
+    "code": "describe('Authentication - Registration', () => {\n  beforeEach(() => {\n    // Visit the base URL before each test\n    cy.visit('/');\n    // Ensure the registration page is visible\n    cy.get('[data-testid=\"show-register\"]').click();\n  });\n\n  it('should register a new user successfully and log them in', () => {\n    // Spy on the POST /api/auth/register API call\n    cy.intercept('POST', '/api/auth/register').as('registerRequest');\n\n    // Fill out the registration form\n    cy.get('[data-testid=\"name-input\"]').type('New User');\n    cy.get('[data-testid=\"register-email-input\"]').type('newuser@shop.com');\n    cy.get('[data-testid=\"register-password-input\"]').type('newuser123');\n    \n    // Submit the registration form\n    cy.get('[data-testid=\"register-button\"]').click();\n\n    // Wait for the API call to complete and assert the response\n    cy.wait('@registerRequest').its('response.statusCode').should('eq', 200);\n\n    // Verify user is logged in by checking if the login link is hidden and profile link is visible\n    cy.get('[data-testid=\"nav-login\"]').should('have.class', 'hidden');\n    cy.get('[data-testid=\"nav-profile\"]').should('not.have.class', 'hidden');\n  });\n\n  it('should show an error message when using a duplicate email', () => {\n    // Spy on the POST /api/auth/register API call\n    cy.intercept('POST', '/api/auth/register').as('registerRequest');\n\n    // Fill out the registration form with an existing email\n    cy.get('[data-testid=\"name-input\"]').type('Existing User');\n    cy.get('[data-testid=\"register-email-input\"]').type('user@shop.com');\n    cy.get('[data-testid=\"register-password-input\"]').type('existinguser123');\n    \n    // Submit the registration form\n    cy.get('[data-testid=\"register-button\"]').click();\n\n    // Wait for the API call to complete and assert the response\n    cy.wait('@registerRequest').its('response.statusCode').should('eq', 400);\n\n    // Verify the error message is displayed\n    cy.get('[data-testid=\"register-error\"]').should('be.visible').and('contain', 'Email already exists');\n  });\n\n  it('should show an error when the form is submitted with empty fields', () => {\n    // Attempt to submit the form without filling it out\n    cy.get('[data-testid=\"register-button\"]').click();\n\n    // Verify the form validation error messages are displayed\n    cy.get('[data-testid=\"name-input\"]:invalid').should('exist');\n    cy.get('[data-testid=\"register-email-input\"]:invalid').should('exist');\n    cy.get('[data-testid=\"register-password-input\"]:invalid').should('exist');\n  });\n\n  it('should handle API-level setup and teardown', () => {\n    // Use cy.request() for setup\n    cy.request('POST', '/api/auth/login', {\n      email: 'admin@shop.com',\n      password: 'admin123'\n    }).then((response) => {\n      expect(response.status).to.eq(200);\n      // Use this session to perform further actions, like clearing user data\n    });\n\n    // Verify the setup was successful by checking login state\n    cy.login('admin@shop.com', 'admin123');\n    cy.get('[data-testid=\"nav-profile\"]').should('not.have.class', 'hidden');\n  });\n});",
+    "qualityScore": 90,
+    "scores": {
+      "syntax": 95,
+      "coverage": 100,
+      "assertions": 75,
+      "maintainability": 80,
+      "bestPractices": 100
+    },
+    "issues": "Inconsistent quote usage; Only weak assertions found. Consider adding more specific assertions.; Consider adding more assertions per test case; Magic numbers detected. Consider using constants.; Some test descriptions are too short",
+    "generatedAt": "2026-02-26T11:45:05.561Z"
+  },
+  {
+    "fileName": "ai-products-1772107412504.cy.ts",
+    "featureName": "Product Catalog",
+    "riskLevel": "medium",
+    "code": "describe('Product Catalog Feature', () => {\n  beforeEach(() => {\n    // Clear cart and ensure user is logged in before each test\n    cy.request('DELETE', '/api/cart/userId/1');\n    cy.login('user@shop.com', 'user123');\n    // Navigate to the product catalog page\n    cy.visit('/');\n    cy.get('[data-testid=\"nav-products\"]').click();\n  });\n\n  it('should load and display products correctly', () => {\n    // Spy on the products API call\n    cy.intercept('GET', '/api/products').as('getProducts');\n\n    // Ensure the product grid is visible and populated\n    cy.get('[data-testid=\"product-grid\"]').should('be.visible');\n    cy.wait('@getProducts').its('response.statusCode').should('eq', 200);\n    cy.get('[data-testid=\"product-grid\"]').children().should('have.length.greaterThan', 0);\n  });\n\n  it('should filter products by category', () => {\n    // Simulate category filtering\n    cy.get('[data-testid=\"category-filter\"]').select('Electronics');\n    \n    // Verify the correct products are displayed\n    cy.get('[data-testid=\"product-grid\"]').children().each(($el) => {\n      cy.wrap($el).contains('Electronics');\n    });\n  });\n\n  it('should search products by text', () => {\n    // Simulate search input\n    cy.get('[data-testid=\"search-input\"]').type('Laptop');\n\n    // Verify the correct products are displayed\n    cy.get('[data-testid=\"product-grid\"]').children().each(($el) => {\n      cy.wrap($el).contains('Laptop');\n    });\n  });\n\n  it('should add a product to the cart', () => {\n    // Add the first product to the cart\n    cy.get('[data-testid=\"product-grid\"]').children().first().within(() => {\n      cy.get('button').click();\n    });\n\n    // Verify the cart count has incremented\n    cy.get('[data-testid=\"cart-count\"]').should('contain', '1');\n  });\n\n  it('should handle invalid login credentials gracefully', () => {\n    // Attempt to login with invalid credentials\n    cy.visit('/');\n    cy.get('[data-testid=\"nav-login\"]').click();\n    cy.get('[data-testid=\"email-input\"]').type('user@shop.com');\n    cy.get('[data-testid=\"password-input\"]').type('wrongpassword');\n    cy.get('[data-testid=\"login-button\"]').click();\n\n    // Verify error message is displayed\n    cy.get('[data-testid=\"login-error\"]').should('be.visible').and('contain', 'Invalid credentials');\n  });\n});",
+    "qualityScore": 89,
+    "scores": {
+      "syntax": 95,
+      "coverage": 100,
+      "assertions": 70,
+      "maintainability": 80,
+      "bestPractices": 100
+    },
+    "issues": "Inconsistent quote usage; Some test cases may be missing assertions; Consider adding more assertions per test case; Magic numbers detected. Consider using constants.; Some test descriptions are too short",
+    "generatedAt": "2026-02-26T12:03:32.504Z"
+  },
+  {
+    "fileName": "ai-cart-1772107420938.cy.ts",
+    "featureName": "Shopping Cart",
+    "riskLevel": "high",
+    "code": "describe('Shopping Cart Management', () => {\n  const userId = '12345'; // Assuming a user ID for testing\n\n  beforeEach(() => {\n    // Setup: Clear the cart before each test to ensure a clean state\n    cy.request('DELETE', `/api/cart/${userId}`);\n    // Visit the homepage\n    cy.visit('/');\n    // Login as a regular user to perform cart operations\n    cy.login('user@shop.com', 'user123');\n  });\n\n  it('should display cart count correctly when items are added', () => {\n    // Intercept the POST request for adding items to the cart\n    cy.intercept('POST', `/api/cart/${userId}`).as('addItem');\n\n    // Simulate adding an item to the cart\n    cy.request('POST', `/api/cart/${userId}`, { productId: '001', quantity: 1 });\n\n    // Wait for the API call to complete\n    cy.wait('@addItem');\n\n    // Assert that the cart count in the nav badge is updated\n    cy.get('[data-testid=\"cart-count\"]').should('contain', '1');\n  });\n\n  it('should update cart display when items are removed', () => {\n    // Setup: Add an item to the cart\n    cy.request('POST', `/api/cart/${userId}`, { productId: '002', quantity: 1 });\n\n    // Intercept the DELETE request for removing items from the cart\n    cy.intercept('DELETE', `/api/cart/${userId}/002`).as('removeItem');\n\n    // Simulate removing an item from the cart\n    cy.request('DELETE', `/api/cart/${userId}/002`);\n\n    // Wait for the API call to complete\n    cy.wait('@removeItem');\n\n    // Assert that the cart count in the nav badge is updated\n    cy.get('[data-testid=\"cart-count\"]').should('contain', '0');\n  });\n\n  it('should handle login error with wrong password', () => {\n    // Attempt to login with incorrect credentials\n    cy.login('user@shop.com', 'wrongpassword');\n\n    // Assert that an error message is displayed\n    cy.get('[data-testid=\"login-error\"]').should('be.visible').and('contain', 'Invalid credentials');\n  });\n\n  it('should calculate total price correctly in the cart', () => {\n    // Setup: Add items to the cart\n    cy.request('POST', `/api/cart/${userId}`, { productId: '003', quantity: 2 });\n\n    // Intercept the GET request for fetching cart items\n    cy.intercept('GET', `/api/cart/${userId}`).as('getCart');\n\n    // Simulate visiting the cart page\n    cy.get('[data-testid=\"nav-cart\"]').click();\n\n    // Wait for the API call to complete\n    cy.wait('@getCart');\n\n    // Assert that the total price is calculated correctly\n    cy.get('[data-testid=\"cart-total\"]').should('contain', '$40'); // Assuming each item costs $20\n  });\n});",
+    "qualityScore": 89,
+    "scores": {
+      "syntax": 95,
+      "coverage": 100,
+      "assertions": 70,
+      "maintainability": 80,
+      "bestPractices": 100
+    },
+    "issues": "Inconsistent quote usage; Some test cases may be missing assertions; Consider adding more assertions per test case; Magic numbers detected. Consider using constants.; Some test descriptions are too short",
+    "generatedAt": "2026-02-26T12:03:40.938Z"
+  },
+  {
+    "fileName": "ai-checkout-1772107431601.cy.ts",
+    "featureName": "Checkout & Order Placement",
+    "riskLevel": "critical",
+    "code": "describe('Checkout & Order Placement', () => {\n  beforeEach(() => {\n    // Perform initial setup: Clear previous cart and login via API\n    cy.request('POST', '/api/cart/clear');\n    cy.login('user@shop.com', 'user123');\n    cy.visit('/');\n  });\n\n  it('should successfully place an order using credit card', () => {\n    // Navigate to the cart page\n    cy.get('[data-testid=\"nav-cart\"]').click();\n\n    // Proceed to checkout\n    cy.get('[data-testid=\"checkout-button\"]').click();\n\n    // Assert checkout form is visible\n    cy.get('[data-testid=\"checkout-form\"]').should('be.visible');\n\n    // Select payment method\n    cy.get('[data-testid=\"payment-method\"]').select('credit-card');\n\n    // Spy on the POST /api/orders request and alias it\n    cy.intercept('POST', '/api/orders').as('postOrder');\n\n    // Confirm order summary is displayed\n    cy.get('[data-testid=\"order-summary\"]').should('be.visible');\n\n    // Place the order\n    cy.get('[data-testid=\"place-order-button\"]').click();\n\n    // Wait for the order request to complete\n    cy.wait('@postOrder').its('response.statusCode').should('eq', 201);\n\n    // Assert cart is cleared after successful order\n    cy.get('[data-testid=\"cart-count\"]').should('contain', '0');\n  });\n\n  it('should not allow order placement with empty payment method', () => {\n    // Navigate to the cart page\n    cy.get('[data-testid=\"nav-cart\"]').click();\n\n    // Proceed to checkout\n    cy.get('[data-testid=\"checkout-button\"]').click();\n\n    // Ensure checkout form is visible\n    cy.get('[data-testid=\"checkout-form\"]').should('be.visible');\n\n    // Do not select any payment method to simulate an empty form scenario\n\n    // Confirm order summary is displayed\n    cy.get('[data-testid=\"order-summary\"]').should('be.visible');\n\n    // Attempt to place the order without selecting a payment method\n    cy.get('[data-testid=\"place-order-button\"]').click();\n\n    // Verify that order is not placed by checking for error indication\n    cy.get('[data-testid=\"payment-method\"]').then($el => {\n      expect($el[0].checkValidity()).to.be.false;\n    });\n\n    // Cart should remain unchanged\n    cy.get('[data-testid=\"cart-count\"]').should('not.contain', '0');\n  });\n});",
+    "qualityScore": 94,
+    "scores": {
+      "syntax": 95,
+      "coverage": 100,
+      "assertions": 90,
+      "maintainability": 80,
+      "bestPractices": 100
+    },
+    "issues": "Inconsistent quote usage; Consider adding more assertions per test case; Magic numbers detected. Consider using constants.; Some test descriptions are too short",
+    "generatedAt": "2026-02-26T12:03:51.602Z"
+  },
+  {
+    "fileName": "ai-profile-1772107439165.cy.ts",
+    "featureName": "Profile & Order History",
+    "riskLevel": "medium",
+    "code": "describe('Profile & Order History Feature', () => {\n  beforeEach(() => {\n    // Clear any existing data and login via API\n    cy.request('POST', '/api/orders', {operation: 'clearCart'});\n    cy.login('user@shop.com', 'user123');\n    cy.visit('/');\n  });\n\n  it('should display profile info and order history for the user', () => {\n    // Navigate to Profile page\n    cy.get('[data-testid=\"nav-profile\"]').click();\n\n    // Intercept the order history API call\n    cy.intercept('GET', '/api/orders/*').as('getOrderHistory');\n\n    // Wait for the order history API to complete\n    cy.wait('@getOrderHistory').its('response.statusCode').should('eq', 200);\n\n    // Assert that profile info is displayed\n    cy.get('[data-testid=\"profile-info\"]').should('be.visible');\n\n    // Assert that order history is displayed\n    cy.get('[data-testid=\"order-history\"]').should('be.visible');\n  });\n\n  it('should not display order history if user is not authenticated', () => {\n    // Log out user\n    cy.get('[data-testid=\"nav-logout\"]').click();\n\n    // Attempt to navigate to Profile page\n    cy.visit('/profile');\n\n    // Assert user is redirected to login\n    cy.url().should('include', '/login');\n  });\n\n  it('should display an error message for incorrect login credentials', () => {\n    // Log out user to perform login test\n    cy.get('[data-testid=\"nav-logout\"]').click();\n\n    // Visit Home page and click login\n    cy.visit('/');\n    cy.get('[data-testid=\"nav-login\"]').click();\n\n    // Fill in login form with incorrect credentials\n    cy.get('[data-testid=\"email-input\"]').type('user@shop.com');\n    cy.get('[data-testid=\"password-input\"]').type('wrongpassword');\n    cy.get('[data-testid=\"login-button\"]').click();\n\n    // Assert that an error message is displayed\n    cy.get('[data-testid=\"login-error\"]').should('be.visible').and('contain', 'Invalid credentials');\n  });\n});",
+    "qualityScore": 85,
+    "scores": {
+      "syntax": 95,
+      "coverage": 100,
+      "assertions": 55,
+      "maintainability": 80,
+      "bestPractices": 100
+    },
+    "issues": "Inconsistent quote usage; Some test cases may be missing assertions; Only weak assertions found. Consider adding more specific assertions.; Consider adding more assertions per test case; Magic numbers detected. Consider using constants.; Some test descriptions are too short",
+    "generatedAt": "2026-02-26T12:03:59.165Z"
+  }
+]

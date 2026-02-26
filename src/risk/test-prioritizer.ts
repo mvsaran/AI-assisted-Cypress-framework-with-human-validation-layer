@@ -6,6 +6,7 @@ export interface TestPriority {
     riskLevel: RiskLevel;
     executionOrder: number;
     reason: string;
+    filePath: string; // Added property to store the route or file path
 }
 
 export interface PrioritizationStrategy {
@@ -42,6 +43,7 @@ export class TestPrioritizer {
                 riskLevel: test.riskClassification.riskLevel,
                 executionOrder: index + 1,
                 reason: `Risk level: ${test.riskClassification.riskLevel}`,
+                filePath: test.filePath,
             }))
             .sort((a, b) => b.priority - a.priority)
             .map((test, index) => ({ ...test, executionOrder: index + 1 }));
@@ -68,6 +70,7 @@ export class TestPrioritizer {
                     riskLevel: test.riskClassification.riskLevel,
                     executionOrder: index + 1,
                     reason: `Modified ${Math.round(daysSinceModified)} days ago`,
+                    filePath: test.filePath,
                 };
             })
             .sort((a, b) => b.priority - a.priority)
@@ -89,6 +92,7 @@ export class TestPrioritizer {
                     riskLevel: test.riskClassification.riskLevel,
                     executionOrder: index + 1,
                     reason: `Failure rate: ${(failureRate * 100).toFixed(1)}%`,
+                    filePath: test.filePath,
                 };
             })
             .sort((a, b) => b.priority - a.priority)
@@ -143,6 +147,7 @@ export class TestPrioritizer {
                     riskLevel: test.riskClassification.riskLevel,
                     executionOrder: index + 1,
                     reason: reasons.join(', ') || 'standard priority',
+                    filePath: test.filePath,
                 };
             })
             .sort((a, b) => {

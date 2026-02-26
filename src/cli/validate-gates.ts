@@ -12,7 +12,13 @@ let allPassed = true;
 
 GATES.forEach(gate => {
     const icon = gate.passed ? '✅' : '❌';
-    console.log(`${icon} ${gate.name}: ${gate.value}% (Required: >${gate.threshold}%)`);
+    let requirement = '';
+    if (gate.name === 'Critical Test Pass Rate') {
+        requirement = '(Required: 95-100%)';
+    } else {
+        requirement = `(Required: >${gate.threshold}%)`;
+    }
+    console.log(`${icon} ${gate.name}: ${gate.value}% ${requirement}`);
     if (!gate.passed) allPassed = false;
 });
 
