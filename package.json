@@ -15,7 +15,8 @@
     "gates:validate": "node --env-file=.env -r ts-node/register src/cli/validate-gates.ts",
     "report:rejection": "node --env-file=.env -r ts-node/register src/cli/rejection-report.ts",
     "report:coverage": "node --env-file=.env -r ts-node/register src/cli/coverage-report.ts",
-    "report:dashboard": "node --env-file=.env -r ts-node/register src/cli/generate-dashboard.ts"
+    "report:dashboard": "node --env-file=.env -r ts-node/register src/cli/generate-dashboard.ts",
+    "report:serve": "node --env-file=.env -r ts-node/register src/cli/serve-dashboard.ts"
   },
   "keywords": [],
   "author": "",

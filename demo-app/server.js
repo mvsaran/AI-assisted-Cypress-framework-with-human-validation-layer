@@ -107,7 +107,13 @@ app.get('/api/cart/:userId', (req, res) => {
 
 app.post('/api/cart/:userId', (req, res) => {
     const userId = req.params.userId;
+    if (!req.body || typeof req.body !== 'object') {
+        return res.status(400).json({ success: false, message: 'Missing request body' });
+    }
     const { productId, quantity } = req.body;
+    if (typeof productId === 'undefined' || typeof quantity === 'undefined') {
+        return res.status(400).json({ success: false, message: 'Missing productId or quantity in request body' });
+    }
 
     const product = products.find((p) => p.id === productId);
 

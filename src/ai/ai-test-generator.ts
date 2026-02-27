@@ -216,14 +216,16 @@ ${request.pageHtml.substring(0, 3000)}
 **Requirements**:
 1. Use TypeScript syntax
 2. ONLY use data-testid selectors that exist in the verified selectors list above — do NOT invent new ones
-3. Use cy.intercept() to spy on API calls and cy.wait() on those aliases. **NOTE**: Search and category filtering are handled CLIENT-SIDE in this app; do NOT use cy.intercept or cy.wait for search/filter actions.
+3. **STRICT TIMING**: You MUST define ALL \`cy.intercept()\` calls at the very beginning of the \`it()\` or \`beforeEach()\` block. They must strictly appear **BEFORE** the \`cy.visit()\` or the action that triggers the network request. If you define an intercept after the visit, the test will fail due to race conditions.
+   * *Note*: Search and category filtering are handled CLIENT-SIDE in this app; do NOT use cy.intercept or cy.wait for search/filter actions.
 4. Include at least one negative test case (e.g. wrong password, empty form)
 5. Use cy.request() for API-level setup/teardown (e.g. clearing cart, logging in via API)
 6. base URL is ${baseUrl} — use cy.visit('/') not cy.visit('${baseUrl}')
 7. For login, use the custom command cy.login(email, password) which is already defined
 8. Add meaningful describe and it descriptions
 9. Each it() block should be independent — use beforeEach for shared setup
-10. Add comments explaining WHY not just WHAT
+10. **Visibility**: Ensure elements are visible before interacting. If a section is hidden (like login or cart), you must click the appropriate nav link (e.g., [data-testid="nav-login"]) to reveal it first.
+11. Add comments explaining WHY not just WHAT
 
 **Output Format**:
 Provide ONLY the TypeScript test code wrapped in a single typescript code block. No explanations outside the block.

@@ -21,6 +21,8 @@ declare global {
 // Login command
 Cypress.Commands.add('login', (email: string, password: string) => {
     cy.visit('/');
+    // Reveal the login section
+    cy.get('[data-testid="nav-login"]').click();
     cy.get('[data-testid="email-input"]').type(email);
     cy.get('[data-testid="password-input"]').type(password);
     cy.get('[data-testid="login-button"]').click();

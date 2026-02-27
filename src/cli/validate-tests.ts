@@ -2,12 +2,11 @@
  * Human Validation CLI
  *
  * Reads pending AI-generated tests from pending-tests.json and presents each one
- * for an interactive approve / reject / skip / test flow.
+ * for an interactive approve / reject / skip flow.
  *
  * Options per test:
  *   [A] Approve  – save to cypress/e2e/ai-generated/ and add to approved-tests.json
  *   [R] Reject   – record rejection reason to reports/rejections/ and rejection-tracking.json
- *   [T] Test     – run the test headlessly in Cypress so you can see the result before deciding
  *   [S] Skip     – leave in pending for a later session
  */
 import * as readline from 'readline';
@@ -37,6 +36,7 @@ interface PendingTest {
 interface ApprovedTest {
     fileName: string;
     featureName?: string;
+    riskLevel?: string;
     qualityScore?: number;
     timestamp: string;
 }
@@ -56,7 +56,6 @@ const approvedDir = path.join('cypress', 'e2e', 'ai-generated');
 const rejectedDir = path.join('reports', 'rejections');
 const approvedTestsPath = path.join('reports', 'approved-tests.json');
 const rejectionTrackingPath = 'rejection-tracking.json';
-const tempPreviewPath = path.join('cypress', 'e2e', 'ai-generated', '_temp_preview.cy.ts');
 
 // ─── Readline ────────────────────────────────────────────────────────────────
 
@@ -93,6 +92,7 @@ function updateApprovedTests(test: PendingTest): ApprovedTest[] {
     approved.push({
         fileName: test.fileName,
         featureName: test.featureName,
+        riskLevel: test.riskLevel,
         qualityScore: test.qualityScore,
         timestamp: new Date().toISOString(),
     });
@@ -118,7 +118,7 @@ function updateRejectionTracking(test: PendingTest, reason: string, category: st
     fs.writeFileSync(rejectionTrackingPath, JSON.stringify(tracking, null, 2), 'utf-8');
 }
 
-function printTestHeader(test: PendingTest, index: number, total: number): void {
+function printTestHeader(test: PendingTest, globalNum: number, originalTotal: number): void {
     const riskIcon = { critical: '🔴', high: '🟠', medium: '🟡', low: '🟢' }[test.riskLevel || ''] || '⚪';
     const scoreBar = (n?: number) => {
         if (n === undefined) return '—';
@@ -127,7 +127,7 @@ function printTestHeader(test: PendingTest, index: number, total: number): void 
     };
 
     console.log('\n╔══════════════════════════════════════════════════════════╗');
-    console.log(`║  TEST ${index + 1} of ${total}`.padEnd(59) + '║');
+    console.log(`║  TEST ${globalNum} of ${originalTotal}`.padEnd(59) + '║');
     console.log('╠══════════════════════════════════════════════════════════╣');
     console.log(`║  ${riskIcon}  ${(test.featureName || test.fileName).substring(0, 51).padEnd(53)}║`);
     console.log(`║  File: ${test.fileName.substring(0, 52).padEnd(52)}║`);
@@ -155,38 +155,36 @@ function printTestHeader(test: PendingTest, index: number, total: number): void 
 
     console.log('╠══════════════════════════════════════════════════════════╣');
     console.log('║  📄 GENERATED TEST CODE:                                 ║');
-    console.log('╚══════════════════════════════════════════════════════════╝');
+    console.log('╠══════════════════════════════════════════════════════════╣');
     console.log('');
     console.log(test.code.trim());
     console.log('');
+    console.log('╔══════════════════════════════════════════════════════════╗');
+    console.log('║  💡 WHAT WOULD YOU LIKE TO DO WITH THIS TEST?            ║');
+    console.log('╠══════════════════════════════════════════════════════════╣');
+    console.log('║  [A] Approve  — save to cypress/e2e/ as accepted test    ║');
+    console.log('║  [R] Reject   — log rejection reason & category          ║');
+    console.log('║  [S] Skip     — leave pending for a later session        ║');
+    console.log('╚══════════════════════════════════════════════════════════╝');
 }
 
-async function runTestPreview(test: PendingTest): Promise<void> {
-    console.log('\n🚀 Running test in headless Cypress — this may take 30-60 seconds...\n');
-
-    // Write temp file
-    fs.mkdirSync(path.dirname(tempPreviewPath), { recursive: true });
-    fs.writeFileSync(tempPreviewPath, test.code.trim() + '\n', 'utf-8');
-
-    try {
-        const result = spawnSync(
-            'npx',
-            ['cypress', 'run', '--headless', '--spec', tempPreviewPath, '--reporter', 'min'],
-            { stdio: 'inherit', timeout: 120_000 }
-        );
-
-        if (result.status === 0) {
-            console.log('\n✅ Test PASSED. All assertions succeeded.');
-        } else {
-            console.log('\n❌ Test FAILED or had errors. Check output above for details.');
-        }
-    } catch (err) {
-        console.error('❌ Could not run Cypress:', (err as Error).message);
-    } finally {
-        // Clean up temp file
-        try { fs.unlinkSync(tempPreviewPath); } catch { /* ignore */ }
-    }
+function printSessionStatus(
+    globalNum: number,
+    originalTotal: number,
+    approved: number,
+    rejected: number,
+    skipped: number
+): void {
+    const reviewed = approved + rejected + skipped;
+    const remaining = originalTotal - reviewed;
+    console.log('\n  ┌─────────────────────────────────────────────────────┐');
+    console.log(`  │  📋 SESSION PROGRESS  (${reviewed} of ${originalTotal} reviewed)`.padEnd(56) + '│');
+    console.log('  ├─────────────────────────────────────────────────────┤');
+    console.log(`  │  ✅ Approved : ${String(approved).padEnd(4)}  ❌ Rejected : ${String(rejected).padEnd(4)}  ⏭️  Skipped: ${String(skipped).padEnd(3)}│`);
+    console.log(`  │  ⏳ Remaining: ${String(remaining).padEnd(37)}│`);
+    console.log('  └─────────────────────────────────────────────────────┘\n');
 }
+
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -213,17 +211,23 @@ async function main(): Promise<void> {
         return;
     }
 
-    console.log(`  Found ${pendingTests.length} pending test(s) awaiting validation.\n`);
-    console.log('  Keys: [A] Approve  [R] Reject  [T] Test (run headlessly)  [S] Skip\n');
+    const originalTotal = pendingTests.length;
+    console.log(`  Found ${originalTotal} pending test(s) awaiting validation.\n`);
+    console.log('  Keys: [A] Approve  [R] Reject  [S] Skip\n');
 
+    // Session-level counters — never reset, even as the array shrinks
+    const session = { approved: 0, rejected: 0, skipped: 0 };
+    let globalNum = 0; // 1-based test number in the original queue
     let i = 0;
+
     while (i < pendingTests.length) {
         const test = pendingTests[i];
-        printTestHeader(test, i, pendingTests.length);
+        globalNum++;
+        printTestHeader(test, globalNum, originalTotal);
 
         let resolved = false;
         while (!resolved) {
-            const answer = await ask('  Action [A]pprove / [R]eject / [T]est / [S]kip ? ');
+            const answer = await ask('  Action [A]pprove / [R]eject / [S]kip ? ');
             const action = answer.trim().toLowerCase();
 
             if (action === 'a') {
@@ -242,8 +246,9 @@ async function main(): Promise<void> {
                     ].join('\n');
                     await fs.promises.writeFile(outputPath, header + test.code.trim() + '\n', 'utf-8');
                     const allApproved = updateApprovedTests(test);
-                    console.log(`\n  ✅ Approved! Saved to: ${outputPath}`);
-                    console.log(`  📊 Total approved tests: ${allApproved.length}`);
+                    session.approved++;
+                    console.log(`\n  ✅ Test #${globalNum} Approved! Saved to: ${outputPath}`);
+                    console.log(`  📊 Total approved tests (all sessions): ${allApproved.length}`);
                     pendingTests.splice(i, 1);
                     resolved = true;
                 } catch (err) {
@@ -266,25 +271,27 @@ async function main(): Promise<void> {
                 const rejectionPath = path.join(rejectedDir, `${test.fileName}.json`);
                 fs.writeFileSync(rejectionPath, JSON.stringify({ reason, category, timestamp: new Date().toISOString() }, null, 2), 'utf-8');
                 updateRejectionTracking(test, reason, category);
+                session.rejected++;
 
-                console.log(`\n  ❌ Rejected (${category}).`);
+                console.log(`\n  ❌ Test #${globalNum} Rejected (${category}).`);
                 console.log(`  📝 Rejection logged to ${rejectionPath} and ${rejectionTrackingPath}`);
                 pendingTests.splice(i, 1);
                 resolved = true;
 
-            } else if (action === 't') {
-                // ── Test (run before deciding) ────────────────────────────
-                await runTestPreview(test);
-                // Do NOT set resolved — loop back to the prompt
-
             } else if (action === 's') {
                 // ── Skip ──────────────────────────────────────────────────
-                console.log('\n  ⏭️  Skipped — test stays in pending for next session.\n');
+                console.log(`\n  ⏭️  Test #${globalNum} Skipped — stays in pending for next session.`);
+                session.skipped++;
                 i++;
                 resolved = true;
 
             } else {
-                console.log('  ❓ Invalid choice. Please enter A, R, T, or S.\n');
+                console.log('  ❓ Invalid choice. Please enter A, R, or S.\n');
+            }
+
+            // Print live status after every decision (not after T)
+            if (resolved) {
+                printSessionStatus(globalNum, originalTotal, session.approved, session.rejected, session.skipped);
             }
         }
     }
@@ -293,10 +300,13 @@ async function main(): Promise<void> {
     fs.writeFileSync(pendingPath, JSON.stringify(pendingTests, null, 2), 'utf-8');
 
     rl.close();
-    console.log('\n══════════════════════════════════════════════════════════');
+    console.log('══════════════════════════════════════════════════════════');
     console.log('  ✅ Validation session complete.');
+    console.log(`  ✅ Approved : ${session.approved}`);
+    console.log(`  ❌ Rejected : ${session.rejected}`);
+    console.log(`  ⏭️  Skipped  : ${session.skipped}`);
     if (pendingTests.length > 0) {
-        console.log(`  ${pendingTests.length} test(s) were skipped and remain in ${pendingPath}.`);
+        console.log(`  📁 ${pendingTests.length} test(s) skipped — still in ${pendingPath}.`);
     }
     console.log('\n  Next steps:');
     console.log('    npm run report:rejection   — view rejection analytics');

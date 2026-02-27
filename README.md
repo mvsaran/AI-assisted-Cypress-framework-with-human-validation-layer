@@ -170,7 +170,10 @@ npm run validate:tests
 - Test code with syntax highlighting
 - Quality scores (syntax, coverage, assertions, maintainability, best practices)
 - Detected issues
-- Approve/reject with categorized reasons
+- Prompt: `[A]pprove / [R]eject / [S]kip` —
+   - **A**: Approve the test
+   - **R**: Reject with reason
+   - **S**: Skip for later review
 
 ### 3. Rejection Tracking & Analytics
 
@@ -272,11 +275,13 @@ Before you see the code, the `TestQualityScorer` performs static analysis across
 - **Best Practices**: Proper use of `cy.intercept`, `cy.request`, and `data-testid`.
 
 ### 3. Interactive Review Phase
-The CLI tool (`npm run validate:tests`) manages the transition from "AI-Generated" to "Approved":
-- **[A] Approve**: Moves the file to `cypress/e2e/ai-generated/` and logs it in `approved-tests.json`.
-- **[R] Reject**: Logs the reason and category in `rejection-tracking.json` to refine future prompts.
-- **[T] Test**: Executes the test headlessly using Cypress so you can see it pass/fail before approving.
-- **[S] Skip**: Keeps the test in `pending-tests.json` for later review.
+The CLI tool (`npm run validate:tests`) manages the transition from "AI-Generated" to "Approved". For each test, you will see:
+
+- Test code, quality scores, and detected issues
+- A prompt: `[A]pprove / [R]eject / [S]kip ?`
+   - **A**: Approve — moves the file to `cypress/e2e/ai-generated/` and logs it in `approved-tests.json`
+   - **R**: Reject — logs the reason and category in `rejection-tracking.json` to refine future prompts
+   - **S**: Skip — keeps the test in `pending-tests.json` for later review
 
 ### 4. Continuous Improvement Phase
 The **Release Confidence Score** is dynamically updated based on your approval/rejection rates. High rejection rates for a specific feature will lower the confidence score and trigger recommendations for manual test intervention or prompt engineering refinements.

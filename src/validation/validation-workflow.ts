@@ -116,30 +116,33 @@ export class ValidationWorkflow {
         console.log(test.testCode);
         console.log('--- End of Test Code ---\n');
 
-        const approved = await this.askQuestion('Approve this test? (y/n): ');
-
-        if (approved.toLowerCase() === 'y') {
-            const comments = await this.askQuestion('Optional comments: ');
-            return {
-                testName: test.testName,
-                approved: true,
-                reviewerComments: comments || undefined,
-                reviewedAt: new Date(),
-                reviewedBy: this.options.reviewer,
-            };
-        } else {
-            const reason = await this.selectRejectionReason();
-            const comments = await this.askQuestion('Rejection comments (required): ');
-
-            return {
-                testName: test.testName,
-                approved: false,
-                rejectionReason: reason,
-                reviewerComments: comments,
-                reviewedAt: new Date(),
-                reviewedBy: this.options.reviewer,
-            };
+        while (true) {
+            const answer = await this.askQuestion("Approve this test? (y/n): ");
+            if (answer.toLowerCase() === 'y') {
+                const comments = await this.askQuestion('Optional comments: ');
+                return {
+                    testName: test.testName,
+                    approved: true,
+                    reviewerComments: comments || undefined,
+                    reviewedAt: new Date(),
+                    reviewedBy: this.options.reviewer,
+                };
+            } else if (answer.toLowerCase() === 'n') {
+                const reason = await this.selectRejectionReason();
+                const comments = await this.askQuestion('Rejection comments (required): ');
+                return {
+                    testName: test.testName,
+                    approved: false,
+                    rejectionReason: reason,
+                    reviewerComments: comments,
+                    reviewedAt: new Date(),
+                    reviewedBy: this.options.reviewer,
+                };
+            } else {
+                console.log("Please enter 'y' (approve) or 'n' (reject)");
+            }
         }
+
     }
 
     /**

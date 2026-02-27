@@ -51,5 +51,47 @@
     "reason": "not needed ",
     "category": "Incorrect assertions",
     "timestamp": "2026-02-26T12:08:03.193Z"
+  },
+  {
+    "fileName": "ai-cart-1772107420938.cy.ts",
+    "featureName": "Shopping Cart",
+    "reason": "missing edge cases",
+    "category": "Incorrect assertions",
+    "timestamp": "2026-02-26T12:57:52.828Z"
+  },
+  {
+    "fileName": "ai-register-1772110541503.cy.ts",
+    "featureName": "Authentication - Registration",
+    "reason": "not needed",
+    "category": "Incorrect assertions",
+    "timestamp": "2026-02-26T13:16:39.981Z"
+  },
+  {
+    "fileName": "ai-login-1772117074293.cy.ts",
+    "featureName": "Authentication - Login",
+    "reason": "not needed",
+    "category": "Incorrect assertions",
+    "timestamp": "2026-02-26T14:45:54.493Z"
+  },
+  {
+    "fileName": "ai-login-1772120526392.cy.ts",
+    "featureName": "Authentication - Login",
+    "reason": "Not needed",
+    "category": "Incorrect assertions",
+    "timestamp": "2026-02-26T15:44:19.568Z"
+  },
+  {
+    "fileName": "ai-login-1772121459317.cy.ts",
+    "featureName": "Authentication - Login",
+    "reason": "Not needed",
+    "category": "Incorrect assertions",
+    "timestamp": "2026-02-26T16:00:09.393Z"
+  },
+  {
+    "fileName": "ai-register-1772176770268.cy.ts",
+    "featureName": "Authentication - Registration",
+    "reason": "NOT NEEDED",
+    "category": "Incorrect assertions",
+    "timestamp": "2026-02-27T07:20:57.798Z"
   }
 ]
