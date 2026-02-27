@@ -32,7 +32,7 @@ This framework showcases a production-ready approach to AI-assisted testing that
 │  ┌──────────────┐      ┌───────────────┐                   │
 │  │ Interactive  │─────▶│   Rejection   │                   │
 │  │   Review     │      │    Tracker    │                   │
-│  │   [A/R/T/S]  │      │               │                   │
+│  │   [A/R/S]    │      │               │                   │
 │  └──────────────┘      └───────────────┘                   │
 └────────────────────┬────────────────────────────────────────┘
                      │
@@ -121,7 +121,7 @@ Experience the full AI-assisted workflow:
    ```bash
    npm run validate:tests
    ```
-   *The core of our HITL (Human-in-the-Loop) system. Review code, see quality scores, and Approve/Reject/Test.*
+   *The core of our HITL (Human-in-the-Loop) system. Review code, see quality scores, and Approve/Reject/Skip.*
 
 3. **📊 View Analytics & Reports**:
    ```bash
